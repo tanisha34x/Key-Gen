@@ -1,10 +1,110 @@
-name: Test
+name: RDP 2026
 
 on:
   workflow_dispatch:
+    inputs:
+      ts_authkey:
+        description: "Tailscale Auth key"
+        required: true
+      cycles:
+        description: "Number of cycles"
+        required: false
+        default: "1"
+
+permissions:
+  contents: read
+  actions: write
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  full:
+    runs-on: windows-latest
+    timeout-minutes: 360
+
+    env:
+      RDP_USER: mtqmanik
+      RDP_PASS: Manik2200@@
+      MAIN_RUNTIME_MIN: 360
+
     steps:
-      - run: echo Hello
+
+    # ---------------- BASIC ----------------
+    - name: Show runner info
+      shell: pwsh
+      run: |
+        whoami
+        systeminfo | findstr /B /C:"OS Name"
+
+    # ---------------- TAILSCALE ----------------
+    - name: Install and Start Tailscale
+      shell: pwsh
+      run: |
+        $exe = "$env:ProgramFiles\Tailscale\tailscale.exe"
+
+        if (-not (Test-Path $exe)) {
+          Invoke-WebRequest `
+            https://pkgs.tailscale.com/stable/tailscale-setup-1.82.0-amd64.msi `
+            -OutFile tailscale.msi
+          Start-Process msiexec.exe -ArgumentList "/i tailscale.msi /quiet /norestart" -Wait
+        }
+
+        Start-Service Tailscale
+        Start-Sleep 10
+
+        & $exe up --authkey "${{ inputs.ts_authkey }}" --hostname "bullet"
+
+        for ($i=0; $i -lt 10; $i++) {
+          $ip = & $exe ip -4 | Select-Object -First 1
+          if ($ip) { break }
+          Start-Sleep 3
+        }
+
+        if (-not $ip) { throw "Tailscale IP not found" }
+
+        echo "TS_IP=$ip" >> $env:GITHUB_ENV
+        Write-Host "Tailscale IP: $ip"
+
+    # ---------------- RDP ----------------
+    - name: Enable RDP
+      shell: pwsh
+      run: |
+        $sec = ConvertTo-SecureString $env:RDP_PASS -AsPlainText -Force
+
+        if (-not (Get-LocalUser $env:RDP_USER -EA SilentlyContinue)) {
+          New-LocalUser $env:RDP_USER -Password $sec
+          Add-LocalGroupMember Administrators $env:RDP_USER
+          Add-LocalGroupMember "Remote Desktop Users" $env:RDP_USER
+        }
+
+        Set-ItemProperty `
+          "HKLM:\System\CurrentControlSet\Control\Terminal Server" `
+          -Name fDenyTSConnections -Value 0
+
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+    # ---------------- PYTHON ----------------
+    - name: Install Python modules
+      shell: pwsh
+      run: |
+        python -m pip install --upgrade pip
+        pip install gdown
+        py -m pip install customtkinter
+        py -m pip install uiautomator2
+        py -m pip install playwright
+        pip install customtkinter
+        pip install uiautomator2
+        pip install opencv-python
+        pip install playwright
+        py -m playwright install
+        playwright install
+
+    # ---------------- KEEP ALIVE ----------------
+    - name: Keep alive
+      shell: pwsh
+      run: |
+        Start-Sleep -Seconds 21600
+
+    - name: Done
+      shell: pwsh
+      run: |
+        Write-Host "DONE"
+        Write-Host "RDP IP: $env:TS_IP"
