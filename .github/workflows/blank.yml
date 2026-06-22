@@ -84,15 +84,15 @@ jobs:
       run: |
         $ProgressPreference = 'SilentlyContinue'
 
-        # Option 1: CLI via npm (most reliable, always latest)
+        # CLI via npm
         npm install -g opencode-ai@latest
         opencode --version
         Write-Host "OpenCode CLI installed successfully"
 
-        # Option 2: Desktop app (GUI)
+        # Desktop app
         $dest = "$env:TEMP\opencode-desktop-setup.exe"
         Invoke-WebRequest `
-          "https://github.com/sst/opencode/releases/latest/download/opencode-desktop-windows-x64.exe" `
+          "https://opencode.ai/download/stable/windows-x64-nsis" `
           -OutFile $dest
         Start-Process $dest -ArgumentList "/S" -Wait
         Write-Host "OpenCode Desktop installed successfully"
