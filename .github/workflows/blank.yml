@@ -78,6 +78,14 @@ jobs:
         pip install playwright
         py -m playwright install
         playwright install
+# ---------------- GOLOGIN ----------------
+    - name: Install GoLogin
+      shell: pwsh
+      run: |
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest "https://dl.gologin.com/gologin.exe" -OutFile "$env:TEMP\gologin.exe"
+        Start-Process "$env:TEMP\gologin.exe" -ArgumentList "/S" -Wait
+        Write-Host "GoLogin installed successfully"
     # ---------------- OPENCODE ----------------
     - name: Install OpenCode
       shell: pwsh
@@ -96,17 +104,6 @@ jobs:
           -OutFile $dest
         Start-Process $dest -ArgumentList "/S" -Wait
         Write-Host "OpenCode Desktop installed successfully"
-    # ---------------- GOLOGIN ----------------
-    - name: Install GoLogin
-      shell: pwsh
-      run: |
-        $ProgressPreference = 'SilentlyContinue'
-        $glInstaller = "$env:TEMP\gologin-setup.exe"
-        Invoke-WebRequest `
-          "https://dl.gologin.com/gologin-setup.exe" `
-          -OutFile $glInstaller
-        Start-Process $glInstaller -ArgumentList "/S" -Wait
-        Write-Host "GoLogin installed successfully"
     # ---------------- KEEP ALIVE ----------------
     - name: Keep alive
       shell: pwsh
