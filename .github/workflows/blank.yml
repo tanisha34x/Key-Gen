@@ -86,24 +86,29 @@ jobs:
         Invoke-WebRequest "https://dl.gologin.com/gologin.exe" -OutFile "$env:TEMP\gologin.exe"
         Start-Process "$env:TEMP\gologin.exe" -ArgumentList "/S" -Wait
         Write-Host "GoLogin installed successfully"
-    # ---------------- OPENCODE ----------------
-    - name: Install OpenCode
+# ---------------- APPS ----------------
+    - name: Install Apps
       shell: pwsh
       run: |
         $ProgressPreference = 'SilentlyContinue'
 
-        # CLI via npm
-        npm install -g opencode-ai@latest
-        opencode --version
-        Write-Host "OpenCode CLI installed successfully"
+        # OpenCode Desktop
+        Write-Host "Downloading OpenCode Desktop..."
+        Invoke-WebRequest "https://opencode.ai/download/stable/windows-x64-nsis" -OutFile "$env:TEMP\opencode-setup.exe"
+        Start-Process "$env:TEMP\opencode-setup.exe" -ArgumentList "/S" -Wait
+        Write-Host "OpenCode Desktop installed"
 
-        # Desktop app
-        $dest = "$env:TEMP\opencode-desktop-setup.exe"
-        Invoke-WebRequest `
-          "https://opencode.ai/download/stable/windows-x64-nsis" `
-          -OutFile $dest
-        Start-Process $dest -ArgumentList "/S" -Wait
-        Write-Host "OpenCode Desktop installed successfully"
+        # VSCode
+        Write-Host "Downloading VSCode..."
+        Invoke-WebRequest "https://code.visualstudio.com/sha/download?build=stable&os=win32-x64-user" -OutFile "$env:TEMP\vscode-setup.exe"
+        Start-Process "$env:TEMP\vscode-setup.exe" -ArgumentList "/VERYSILENT /NORESTART /MERGETASKS=!runcode" -Wait
+        Write-Host "VSCode installed"
+
+        # IDM
+        Write-Host "Downloading IDM..."
+        Invoke-WebRequest "https://download.internetdownloadmanager.com/idman643build1.exe" -OutFile "$env:TEMP\idm-setup.exe"
+        Start-Process "$env:TEMP\idm-setup.exe" -ArgumentList "/S" -Wait
+        Write-Host "IDM installed"
     # ---------------- KEEP ALIVE ----------------
     - name: Keep alive
       shell: pwsh
