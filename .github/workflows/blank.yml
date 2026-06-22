@@ -1,5 +1,4 @@
 name: RDP 2026
-
 on:
   workflow_dispatch:
     inputs:
@@ -10,77 +9,60 @@ on:
         description: "Number of cycles"
         required: false
         default: "1"
-
 permissions:
   contents: read
   actions: write
-
 jobs:
   full:
     runs-on: windows-latest
     timeout-minutes: 360
-
     env:
       RDP_USER: mtqmanik
       RDP_PASS: Manik2200@@
       MAIN_RUNTIME_MIN: 360
-
     steps:
-
     # ---------------- BASIC ----------------
     - name: Show runner info
       shell: pwsh
       run: |
         whoami
         systeminfo | findstr /B /C:"OS Name"
-
     # ---------------- TAILSCALE ----------------
     - name: Install and Start Tailscale
       shell: pwsh
       run: |
         $exe = "$env:ProgramFiles\Tailscale\tailscale.exe"
-
         if (-not (Test-Path $exe)) {
           Invoke-WebRequest `
             https://pkgs.tailscale.com/stable/tailscale-setup-1.82.0-amd64.msi `
             -OutFile tailscale.msi
           Start-Process msiexec.exe -ArgumentList "/i tailscale.msi /quiet /norestart" -Wait
         }
-
         Start-Service Tailscale
         Start-Sleep 10
-
         & $exe up --authkey "${{ inputs.ts_authkey }}" --hostname "bullet"
-
         for ($i=0; $i -lt 10; $i++) {
           $ip = & $exe ip -4 | Select-Object -First 1
           if ($ip) { break }
           Start-Sleep 3
         }
-
         if (-not $ip) { throw "Tailscale IP not found" }
-
         echo "TS_IP=$ip" >> $env:GITHUB_ENV
         Write-Host "Tailscale IP: $ip"
-
     # ---------------- RDP ----------------
     - name: Enable RDP
       shell: pwsh
       run: |
         $sec = ConvertTo-SecureString $env:RDP_PASS -AsPlainText -Force
-
         if (-not (Get-LocalUser $env:RDP_USER -EA SilentlyContinue)) {
           New-LocalUser $env:RDP_USER -Password $sec
           Add-LocalGroupMember Administrators $env:RDP_USER
           Add-LocalGroupMember "Remote Desktop Users" $env:RDP_USER
         }
-
         Set-ItemProperty `
           "HKLM:\System\CurrentControlSet\Control\Terminal Server" `
           -Name fDenyTSConnections -Value 0
-
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-
     # ---------------- PYTHON ----------------
     - name: Install Python modules
       shell: pwsh
@@ -96,13 +78,39 @@ jobs:
         pip install playwright
         py -m playwright install
         playwright install
-
+    # ---------------- OPENCODE ----------------
+    - name: Install OpenCode
+      shell: pwsh
+      run: |
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest `
+          "https://github.com/sst/opencode/releases/latest/download/opencode-x86_64-windows.zip" `
+          -OutFile "$env:TEMP\opencode.zip"
+        Expand-Archive "$env:TEMP\opencode.zip" -DestinationPath "$env:ProgramFiles\opencode" -Force
+        $env:PATH = "$env:ProgramFiles\opencode;$env:PATH"
+        [Environment]::SetEnvironmentVariable(
+          "PATH",
+          "$env:ProgramFiles\opencode;" + [Environment]::GetEnvironmentVariable("PATH","Machine"),
+          "Machine"
+        )
+        & "$env:ProgramFiles\opencode\opencode.exe" --version
+        Write-Host "OpenCode installed successfully"
+    # ---------------- GOLOGIN ----------------
+    - name: Install GoLogin
+      shell: pwsh
+      run: |
+        $ProgressPreference = 'SilentlyContinue'
+        $glInstaller = "$env:TEMP\gologin-setup.exe"
+        Invoke-WebRequest `
+          "https://dl.gologin.com/gologin-setup.exe" `
+          -OutFile $glInstaller
+        Start-Process $glInstaller -ArgumentList "/S" -Wait
+        Write-Host "GoLogin installed successfully"
     # ---------------- KEEP ALIVE ----------------
     - name: Keep alive
       shell: pwsh
       run: |
         Start-Sleep -Seconds 21600
-
     - name: Done
       shell: pwsh
       run: |
