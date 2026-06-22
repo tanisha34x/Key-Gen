@@ -83,18 +83,19 @@ jobs:
       shell: pwsh
       run: |
         $ProgressPreference = 'SilentlyContinue'
+
+        # Option 1: CLI via npm (most reliable, always latest)
+        npm install -g opencode-ai@latest
+        opencode --version
+        Write-Host "OpenCode CLI installed successfully"
+
+        # Option 2: Desktop app (GUI)
+        $dest = "$env:TEMP\opencode-desktop-setup.exe"
         Invoke-WebRequest `
-          "https://github.com/sst/opencode/releases/latest/download/opencode-x86_64-windows.zip" `
-          -OutFile "$env:TEMP\opencode.zip"
-        Expand-Archive "$env:TEMP\opencode.zip" -DestinationPath "$env:ProgramFiles\opencode" -Force
-        $env:PATH = "$env:ProgramFiles\opencode;$env:PATH"
-        [Environment]::SetEnvironmentVariable(
-          "PATH",
-          "$env:ProgramFiles\opencode;" + [Environment]::GetEnvironmentVariable("PATH","Machine"),
-          "Machine"
-        )
-        & "$env:ProgramFiles\opencode\opencode.exe" --version
-        Write-Host "OpenCode installed successfully"
+          "https://github.com/sst/opencode/releases/latest/download/opencode-desktop-windows-x64.exe" `
+          -OutFile $dest
+        Start-Process $dest -ArgumentList "/S" -Wait
+        Write-Host "OpenCode Desktop installed successfully"
     # ---------------- GOLOGIN ----------------
     - name: Install GoLogin
       shell: pwsh
